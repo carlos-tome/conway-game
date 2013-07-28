@@ -1,9 +1,11 @@
-module Game where
+module Main where
     
 import qualified Data.Array.Repa as R (fromFunction,computeS,sumAllS,extract)
 import Data.Array.Repa 
 
 import Control.Monad (forM_)
+import System.Environment (getArgs)
+import Control.Concurrent (threadDelay)
     
 -- Types
 type State = Int
@@ -15,6 +17,8 @@ showState 0 = ' '
 type Board = Array U DIM2 State
 
 type Index = (Int,Int)
+
+type Object = [Index]
 
 n :: Int
 n = 10
@@ -48,15 +52,32 @@ nextState :: Board -> DIM2 -> State
 nextState board ix@(Z :. i :. j) 
     | i == 0 || i == (n-1) || j == 0 || j == (n-1) = dead
     | otherwise =
-        let sumM = R.sumAllS $ R.extract (Z :. (i-1) :. (j-i)) (Z :. (i+1) :. (j+1)) board 
+        let sumM = R.sumAllS $ R.extract (Z :. (i-1) :. (j-1)) (Z :. 3 :. 3) board 
         in case board ! ix of
                 1 -> if sumM == 3 || sumM == 4 then alive else dead
                 0 -> if sumM == 3 then alive else dead
-            
-                 
+                             
 stepBoard :: Board -> Board
 stepBoard board = R.computeS $ R.fromFunction (Z :. n :. n) (nextState board)
 
-           
+blinker :: Object 
+blinker = [(3,3),(3,4),(3,5)] 
+
+loop :: Board -> Int -> Int -> IO ()
+loop board 0 _ = putStrLn "END OF GAME"
+loop board n t = do
+    printBoard board
+    threadDelay t
+    putChar '\n'
+    loop (stepBoard board) (n-1) t
+     
 main :: IO ()
-main = undefined
+main = do
+    [delay] <- getArgs
+    let init = initBoard blinker
+    loop init 10 (read delay * 1000)
+        
+    
+    
+    
+    
